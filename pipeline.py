@@ -1,7 +1,9 @@
 from collections.abc import Callable
 
+from groq import BadRequestError
 from rich import print
 from agents import build_web_reader_agent, build_web_search_agent, writer_chain, critic_chain
+from tools import web_search
 
 CRITIC_SEARCH_EXCERPT_CHARS = 1800
 CRITIC_READING_EXCERPT_CHARS = 1200
@@ -63,7 +65,7 @@ def run_research_pipeline(
     search_agent = build_web_search_agent()
 
     # Keep search focused and preserve source links for downstream stages.
-    search_result = search_agent.invoke({
+    search_input = {
         "messages": [
             (
                 "user",
@@ -77,10 +79,21 @@ def run_research_pipeline(
                 """
             )
         ]
-    })
+    }
+    try:
+        search_result = search_agent.invoke(search_input)
+    except BadRequestError as exc:
+        error = exc.body.get("error", {}) if isinstance(exc.body, dict) else {}
+        if not isinstance(error, dict) or error.get("code") != "tool_use_failed":
+            raise
 
-    # Store the agent's final response for use by subsequent stages.
-    state["search_results"] = search_result["messages"][-1].content
+        print(
+            "[yellow]Search agent returned malformed tool arguments; "
+            "using the existing Tavily search tool directly.[/yellow]"
+        )
+        state["search_results"] = web_search.invoke({"query": topic})
+    else:
+        state["search_results"] = search_result["messages"][-1].content
 
     if progress_callback:
         progress_callback("reading", 30)
