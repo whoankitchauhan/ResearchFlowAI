@@ -1,0 +1,97 @@
+# ============================================================
+# INTELLICORE
+# Multi-Agent AI Research System
+# ============================================================
+
+
+# ============================================================
+# LANGCHAIN CORE
+# ============================================================
+
+# Main LangChain framework.
+# Provides the foundation for building LLM-powered applications.
+langchain
+
+# Core LangChain abstractions.
+# Includes:
+# - Runnables
+# - LCEL (LangChain Expression Language)
+# - Prompts
+# - Output parsers
+# - Message types
+langchain-core
+
+# Community-maintained integrations and utilities.
+# Provides additional tools, loaders, retrievers, etc.
+langchain-community
+
+# LangChain integration for xAI's Grok models.
+# Used to connect Intellicore with the Grok API.
+langchain-xai
+
+
+# ============================================================
+# AGENTS & ORCHESTRATION
+# ============================================================
+
+# LangGraph provides the execution framework for
+# stateful and tool-using AI agents.
+#
+# Used for building the ReAct-style agent workflow where
+# agents can reason about a task and decide which tool
+# to use.
+langgraph
+
+
+# ============================================================
+# WEB SEARCH
+# ============================================================
+
+# Official Tavily Python SDK.
+#
+# Used to create the web-search tool that allows the
+# research agent to search the internet for relevant,
+# recent information.
+tavily-python
+
+
+# ============================================================
+# WEB SCRAPING
+# ============================================================
+
+# HTTP client used to send requests to webpages and
+# retrieve their HTML content.
+requests
+
+# HTML parsing library.
+#
+# Used to extract meaningful text/content from webpages
+# after requests retrieves their HTML.
+beautifulsoup4
+
+
+# ============================================================
+# ENVIRONMENT & CONFIGURATION
+# ============================================================
+
+# Loads API keys and configuration values from a .env file.
+#
+# Example:
+# GROK_API_KEY=your_key
+# TAVILY_API_KEY=your_key
+python-dotenv
+
+
+# ============================================================
+# FRONTEND / USER INTERFACE
+# ============================================================
+
+# Framework for building the interactive web interface
+# for Intellicore using Python.
+#
+# Used to:
+# - Accept research queries
+# - Show agent progress
+# - Display search results
+# - Display the generated research report
+streamlit
