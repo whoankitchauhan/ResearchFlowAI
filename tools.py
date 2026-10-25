@@ -1,23 +1,27 @@
-from pydoc import text
+import os
 
 from langchain.tools import tool
-from sqlalchemy import text
 import requests
 from bs4 import BeautifulSoup
 from tavily import TavilyClient
-import os
 from dotenv import load_dotenv
-from rich import print
+
 load_dotenv()
 
-tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+
+def _get_tavily_client() -> TavilyClient:
+    api_key = os.getenv("TAVILY_API_KEY")
+    if not api_key:
+        raise RuntimeError("TAVILY_API_KEY is required to use web search.")
+    return TavilyClient(api_key=api_key)
+
 
 @tool 
 def web_search(query: str) -> str:
     """Search the web for recent information. 
     The query must consist of short, specific keywords or direct questions. 
     Avoid unnecessary conversational words like 'please', 'find', or 'search for'."""
-    results = tavily.search(query=query, max_results=2)
+    results = _get_tavily_client().search(query=query, max_results=2)
     
     try:
     
@@ -42,7 +46,6 @@ def scrape_url(url: str) -> str:
         soup = BeautifulSoup(response.content, 'html.parser')
         for tag in soup(['script', 'style',"nav" , "footer"]):
             tag.decompose()  # Remove script and style elements
-        text = soup.get_text(separator='\n', strip=True)
         return soup.get_text(separator='\n', strip=True)[:3000]  # Return the first 3000 characters of the text
     except Exception as e:
         return f"An error occurred while scraping the URL: {str(e)}"
