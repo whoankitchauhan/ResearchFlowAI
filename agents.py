@@ -1,18 +1,24 @@
+from functools import lru_cache
+
 from langchain.agents import create_agent
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableLambda
 from tools import web_search, scrape_url
 from dotenv import load_dotenv
 load_dotenv()
 
-llm = ChatGroq(model = "openai/gpt-oss-120b", temperature = 0)
+
+@lru_cache(maxsize=1)
+def _get_llm() -> ChatGroq:
+    return ChatGroq(model="openai/gpt-oss-120b", temperature=0)
 
 # 1st Agent: Web Search Agent
 
 def build_web_search_agent():
     return create_agent(
-        model=llm,
+        model=_get_llm(),
         tools=[web_search],
     )
     
@@ -21,7 +27,7 @@ def build_web_search_agent():
 
 def build_web_reader_agent():
     return create_agent(
-        model=llm,
+        model=_get_llm(),
         tools=[scrape_url],
     )
     
@@ -129,7 +135,8 @@ writer_prompt = ChatPromptTemplate.from_messages([
 ])
 
 # LCEL pipeline: Prompt -> Grok LLM -> String output
-writer_chain = writer_prompt | llm | StrOutputParser()
+lazy_llm = RunnableLambda(lambda prompt_value: _get_llm().invoke(prompt_value))
+writer_chain = writer_prompt | lazy_llm | StrOutputParser()
 
 
 
@@ -237,4 +244,4 @@ critic_prompt = ChatPromptTemplate.from_messages([
 ])
 
 # LCEL pipeline: Prompt -> Grok LLM -> String output
-critic_chain = critic_prompt | llm | StrOutputParser()
+critic_chain = critic_prompt | lazy_llm | StrOutputParser()
