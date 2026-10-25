@@ -1,11 +1,19 @@
+from collections.abc import Callable
+
 from rich import print
 from agents import build_web_reader_agent, build_web_search_agent, writer_chain, critic_chain
 
 
-def run_research_pipeline(topic: str) -> dict:
+def run_research_pipeline(
+    topic: str,
+    progress_callback: Callable[[str, int], None] | None = None,
+) -> dict[str, str]:
     """Execute the complete research workflow from web search to critical review."""
 
     state = {}
+
+    if progress_callback:
+        progress_callback("search", 5)
 
     # ============================================================
     # STEP 1: WEB SEARCH AGENT
@@ -63,6 +71,9 @@ def run_research_pipeline(topic: str) -> dict:
 
     # Store the agent's final response for use by subsequent stages.
     state["search_results"] = search_result["messages"][-1].content
+
+    if progress_callback:
+        progress_callback("reading", 30)
 
     print("[bold green]✓ Web research completed.[/bold green]")
     print("[bold cyan]" + "-" * 65 + "[/bold cyan]")
@@ -123,6 +134,9 @@ def run_research_pipeline(topic: str) -> dict:
     # Save the Reader Agent's final response for report generation.
     state["scraped_content"] = reader_result["messages"][-1].content
 
+    if progress_callback:
+        progress_callback("writing", 55)
+
     print("[bold green]✓ Deep reading completed.[/bold green]")
     print("[bold cyan]" + "-" * 65 + "[/bold cyan]")
     print("[bold white]SCRAPED CONTENT[/bold white]")
@@ -154,6 +168,9 @@ def run_research_pipeline(topic: str) -> dict:
         "research": research_combined
     })
 
+    if progress_callback:
+        progress_callback("reviewing", 80)
+
     print("[bold green]✓ Research report generated.[/bold green]")
     print("[bold cyan]" + "-" * 65 + "[/bold cyan]")
     print("[bold white]FINAL RESEARCH REPORT[/bold white]")
@@ -174,8 +191,8 @@ def run_research_pipeline(topic: str) -> dict:
     # specific weaknesses and opportunities for improvement.
     # The critic receives the report as configured by this pipeline.
     state["feedback"] = critic_chain.invoke({
-        "report": state["report"]
-    "research": research_combined
+        "report": state["report"],
+        "research": research_combined,
     })
 
     print("[bold green]✓ Critical review completed.[/bold green]")
@@ -192,6 +209,9 @@ def run_research_pipeline(topic: str) -> dict:
     print("[bold green]" + "=" * 65 + "[/bold green]")
     print("[bold white on green]              RESEARCH PIPELINE COMPLETE              [/bold white on green]")
     print("[bold green]" + "=" * 65 + "[/bold green]\n")
+
+    if progress_callback:
+        progress_callback("completed", 100)
 
     return state
 
