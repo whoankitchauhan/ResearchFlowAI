@@ -75,12 +75,17 @@ beautifulsoup4
 # ============================================================
 
 # Loads API keys and configuration values from a .env file.
-#
-# Example:
-# GROK_API_KEY=your_key
-# TAVILY_API_KEY=your_key
 python-dotenv
 
+
+# ============================================================
+# TERMINAL OUTPUT
+# ============================================================
+
+# Provides formatted and readable terminal output.
+# Used instead of Python's normal print() for better
+# debugging and displaying structured results.
+rich
 
 # ============================================================
 # FRONTEND / USER INTERFACE
