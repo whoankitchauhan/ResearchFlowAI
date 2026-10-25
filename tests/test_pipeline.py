@@ -4,6 +4,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+import httpx
+from groq import BadRequestError
 import pipeline
 
 
@@ -112,6 +114,79 @@ class ResearchPipelineTests(unittest.TestCase):
             pipeline.run_research_pipeline("Test topic")
 
         critic.invoke.assert_called_once()
+
+    def test_malformed_search_tool_call_falls_back_to_direct_tavily(self) -> None:
+        search_error = BadRequestError(
+            "Failed to parse tool call arguments as JSON",
+            response=httpx.Response(
+                400,
+                request=httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions"),
+            ),
+            body={
+                "error": {
+                    "code": "tool_use_failed",
+                    "message": "Failed to parse tool call arguments as JSON",
+                }
+            },
+        )
+        search_agent = SimpleNamespace(invoke=Mock(side_effect=search_error))
+        reader_agent = SimpleNamespace(
+            invoke=Mock(return_value={
+                "messages": [SimpleNamespace(content="Read evidence")]
+            })
+        )
+        writer = SimpleNamespace(invoke=Mock(return_value="Research report"))
+        critic = SimpleNamespace(invoke=Mock(return_value="Critical review"))
+        direct_search_tool = SimpleNamespace(
+            invoke=Mock(
+                return_value=(
+                    "Title: Reliable source\nURL: https://example.org\n"
+                    "Snippet: Evidence."
+                )
+            )
+        )
+
+        with (
+            patch.object(pipeline, "build_web_search_agent", return_value=search_agent),
+            patch.object(pipeline, "build_web_reader_agent", return_value=reader_agent),
+            patch.object(pipeline, "writer_chain", writer),
+            patch.object(pipeline, "critic_chain", critic),
+            patch.object(pipeline, "web_search", direct_search_tool),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            result = pipeline.run_research_pipeline("topic to search")
+
+        search_agent.invoke.assert_called_once()
+        direct_search_tool.invoke.assert_called_once_with({"query": "topic to search"})
+        self.assertEqual(
+            result["search_results"],
+            "Title: Reliable source\nURL: https://example.org\nSnippet: Evidence.",
+        )
+        reader_input = reader_agent.invoke.call_args.args[0]["messages"][0][1]
+        self.assertIn("https://example.org", reader_input)
+        writer.invoke.assert_called_once()
+        critic.invoke.assert_called_once()
+
+    def test_other_groq_bad_requests_are_not_hidden_by_search_fallback(self) -> None:
+        search_error = BadRequestError(
+            "Invalid API request",
+            response=httpx.Response(
+                400,
+                request=httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions"),
+            ),
+            body={"error": {"code": "invalid_request_error"}},
+        )
+        search_agent = SimpleNamespace(invoke=Mock(side_effect=search_error))
+
+        with (
+            patch.object(pipeline, "build_web_search_agent", return_value=search_agent),
+            patch.object(pipeline, "web_search") as direct_search_tool,
+            contextlib.redirect_stdout(io.StringIO()),
+            self.assertRaises(BadRequestError),
+        ):
+            pipeline.run_research_pipeline("topic to search")
+
+        direct_search_tool.invoke.assert_not_called()
 
 
 if __name__ == "__main__":
