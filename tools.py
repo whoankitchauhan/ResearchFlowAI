@@ -17,8 +17,9 @@ def web_search(query: str) -> str:
     """Search the web for recent information. 
     The query must consist of short, specific keywords or direct questions. 
     Avoid unnecessary conversational words like 'please', 'find', or 'search for'."""
+    results = tavily.search(query=query, max_results=2)
+    
     try:
-        results = tavily.search(query=query, max_results=2)
     
         out = []
     
