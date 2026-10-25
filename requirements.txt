@@ -1,74 +1,17 @@
 # ============================================================
-# INTELLICORE - MULTI-AGENT AI RESEARCH SYSTEM
+# RESEARCHFLOWAI - MULTI-AGENT AI RESEARCH SYSTEM
 # ============================================================
 
-# ============================================================
-# LANGCHAIN CORE & OPENAI
-# ============================================================
+# ResearchFlowAI direct runtime dependencies
 
-langchain>=0.2.0                  # Main LLM application framework
-langchain-core>=0.2.0             # Runnables, prompts, messages, and parsers
-langchain-community>=0.2.0        # Community integrations and utilities
-langchain-openai>=0.1.0           # OpenAI integration for LangChain
-langchain-xai                     # xAI Grok integration for LangChain
-openai>=1.30.0                    # OpenAI API client
-
-# ============================================================
-# AGENTS & ORCHESTRATION
-# ============================================================
-
-langgraph                         # Stateful agent workflows and orchestration
-
-# ============================================================
-# WEB SEARCH
-# ============================================================
-
-tavily-python>=0.3.0              # Internet search API for research agents
-
-# ============================================================
-# WEB SCRAPING & HTTP
-# ============================================================
-
-requests>=2.31.0                  # HTTP requests to webpages and APIs
-beautifulsoup4>=4.12.0            # HTML parsing and content extraction
-lxml>=5.0.0                       # Fast HTML and XML parsing
-html5lib>=1.1                     # HTML5-compliant parsing and cleanup
-aiohttp>=3.9.0                    # Asynchronous HTTP requests
-
-# ============================================================
-# ENVIRONMENT & CONFIGURATION
-# ============================================================
-
-python-dotenv>=1.0.0              # Load environment variables from .env files
-
-# ============================================================
-# FRONTEND / USER INTERFACE
-# ============================================================
-
-streamlit                         # Interactive web interface for Intellicore
-
-# ============================================================
-# DATA HANDLING & TOKENIZATION
-# ============================================================
-
-pandas>=2.0.0                     # Data processing and tabular data handling
-tiktoken>=0.6.0                   # Token counting and text encoding
-
-# ============================================================
-# OUTPUT & DEBUGGING
-# ============================================================
-
-rich>=13.7.0                      # Formatted terminal output and debugging
-
-# ============================================================
-# RETRIES & ERROR HANDLING
-# ============================================================
-
-tenacity>=8.2.0                   # Retry logic for unreliable operations
-
-# ============================================================
-# JSON PROCESSING & VALIDATION
-# ============================================================
-
-orjson>=3.9.0                     # Fast JSON serialization and deserialization
-pydantic>=2.5.0                   # Data validation and typed data models
+beautifulsoup4>=4.12.0
+fastapi>=0.115.0
+langchain>=1.0.0
+langchain-core>=1.0.0
+langchain-groq>=1.1.0
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+rich>=13.7.0
+tavily-python>=0.3.0
+uvicorn[standard]>=0.30.0
