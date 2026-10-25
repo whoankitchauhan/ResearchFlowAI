@@ -288,6 +288,10 @@ those external integrations in your environment.
   shared production backend.
 - **Provider usage:** Each complete research run uses external Groq and Tavily
   services. Their availability, rate limits, terms, and costs apply.
+- **Token limits:** ResearchFlowAI caps generated tokens for each model stage
+  and limits the evidence excerpts sent to the critic. If Groq rejects the
+  critic request with HTTP 413, only that review is retried once with shorter
+  excerpts; other failures are surfaced normally.
 - **Network access:** Search and page reading require outbound internet
   connectivity. A source may be unavailable, block scraping, or return
   incomplete content.
