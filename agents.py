@@ -59,13 +59,26 @@ writer_prompt = ChatPromptTemplate.from_messages([
         Research:
         {research}
 
-        Write a useful Markdown report with these sections:
-        # 1. Introduction
-        # 2. Key Findings (up to three or more only when supported; explain
-        evidence and significance, with numbered citations)
-        # 3. Critical Analysis (trade-offs, disagreements, limitations)
-        # 4. Conclusion (answer the question using supported claims)
-        # 5. Sources (numbered titles and URLs supplied above)
+        Return clean Markdown with this exact structure and hierarchy. Replace
+        the title placeholder with a concise topic title; do not print the
+        placeholder:
+        # Research Report: [short topic title]
+        ## 1. Introduction
+        ## 2. Key Findings
+        ## 3. Critical Analysis
+        ## 4. Conclusion
+        ## 5. Sources
+
+        In Key Findings, use a Markdown table with the columns "Finding",
+        "Evidence", and "Significance". Include only supported findings,
+        usually three to five, and keep each cell concise. Put numbered
+        citations such as [1] in the Evidence cell. Use short paragraphs or
+        bullets for analysis and limitations. List supplied source titles and
+        URLs under Sources.
+        Use ### only for useful subsections, **bold** sparingly, and standard
+        Markdown syntax. Do not output raw HTML or display Markdown table
+        delimiters as prose. If a table cannot be supported by the evidence,
+        explain the gap in a short paragraph instead.
 
         Avoid repetition. State when evidence is insufficient. Never create
         missing evidence, citations, or sources.
@@ -108,20 +121,21 @@ critic_prompt = ChatPromptTemplate.from_messages([
         Available research evidence:
         {research}
 
-        Return a concise review in this format:
-        Score: X/10
-        Evaluation Breakdown:
-        - Factual Accuracy: X/10
-        - Source Quality and Traceability: X/10
-        - Depth of Analysis: X/10
-        - Structure and Clarity: X/10
-        - Completeness: X/10
-        Strengths: specific demonstrated strengths.
-        Areas to Improve: specific changes and why.
-        Critical Issues: material unsupported claims, citation problems, or
-        missing evidence; distinguish confirmed issues from concerns. If none,
-        say so.
-        One Line Verdict: overall assessment and most important next step.
+        Return concise Markdown using these headings:
+        ## Overall Score
+        ## Evaluation Breakdown
+        ## Strengths
+        ## Areas to Improve
+        ## Critical Issues
+        ## Verdict
+
+        Under Evaluation Breakdown, use a Markdown table with columns
+        "Criterion" and "Score" for factual accuracy, source quality and
+        traceability, depth of analysis, structure and clarity, and
+        completeness. Score 9-10 excellent, 7-8 strong, 5-6 adequate, 3-4
+        poor, 1-2 seriously deficient. Keep the remaining sections specific
+        and concise. In Critical Issues, distinguish confirmed issues from
+        concerns; if none, say so. Do not output raw HTML.
         """
     ),
 ])
