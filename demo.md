@@ -1,141 +1,188 @@
-# How ResearchFlowAI Finds and Reads Sources
+# A Real ResearchFlowAI Run, Explained Simply
 
-This example follows the code for the question **“What is agentic AI?”** It
-explains what the project is configured to do, without inventing search results
-or promising a fixed number of websites.
+This walkthrough is based on the real console output shared for this run. The
+topic was:
 
-## The short answer
+> **How are cities adapting their power grids for extreme heat?**
 
-- **Search:** Each call to the Tavily search tool asks for **up to 2 results**.
-  The code does not promise exactly 2, 3, or 5 websites overall. The search
-  agent controls its tool use, and the code does not set a fixed number of
-  search-tool calls.
-- **Reading:** The reader is told to use the **most relevant URL** from the
-  search evidence. It is not instructed to read every result. However, the code
-  does not enforce a strict maximum of one scrape-tool call, either.
-- **Writing:** The report writer receives both the search findings and the
-  reader's extracted content. It can therefore use information from the search
-  findings as well as the deeper reading; it does not receive only the scraped
-  page.
+It explains what the log shows, what the code does, and what cannot be known
+from this log alone.
+
+## The short version
+
+- The pipeline started **one research job** and invoked the search agent once.
+- The search agent's final **SEARCH RESULTS** summary listed **six sources**.
+- The code asks Tavily for **up to two results per `web_search` tool call**.
+  The pasted log does not show the raw tool calls, so it does not prove exactly
+  how many Tavily searches the agent made.
+- The reader's final **SCRAPED CONTENT** summary focused on **one article**:
+  the Niskanen Center article about transmission infrastructure and extreme
+  heat.
+- The report writer then received **both** the search summary and the deep
+  reading summary.
 
 ## Step by step
 
-### 1. You enter a question
+### 1. The question entered the research pipeline
 
-For example:
+The console shows this topic:
 
-> What is agentic AI?
+> How are cities adapting their power grids for extreme heat?
 
-The pipeline sends this topic to the web-search agent.
+The web application starts one job for that question. The many `GET /api/jobs/...`
+lines in the log are the page checking the job's progress; they are **not**
+additional web searches.
 
-### 2. The search agent looks for sources
+### 2. The search agent was asked to research it
 
-The search agent has access to a tool called `web_search`. That tool sends the
-question to Tavily and sets `max_results=2` for **each tool call**. For every
-returned result, the tool provides a title, URL, and a snippet limited to 300
-characters.
+The pipeline sent the topic to the search agent and asked it to prefer recent,
+reliable sources and return findings with dates, titles, and URLs.
 
-This is a limit per search call, not a guarantee of how many websites will
-appear in the complete run. The agent may decide how to use its search tool;
-the pipeline does not specify a fixed total result count. If the agent's tool
-call fails in one specific way, the pipeline directly calls the same search
-tool once as a fallback; that call also asks Tavily for up to 2 results.
+The **SEARCH RESULTS** printed in the log listed these six sources:
 
-The code also does not promise that every result returned by Tavily will appear
-unchanged in the search agent's final response. The search agent returns its
-response, and that response is saved as the search findings.
+1. **Niskanen Center** — “How transmission infrastructure can mitigate
+   blackouts during extreme heat”
+   - https://www.niskanencenter.org/how-transmission-infrastructure-can-mitigate-blackouts-during-extreme-heat
+2. **Uplight** — “3 Ways to Boost Grid Resilience During Heat Waves”
+   - https://uplight.com/blog/3-ways-to-boost-grid-resilience-during-heat-waves
+3. **Con Edison** — “Climate Change Vulnerability Study – Summary”
+4. **Arizona Office of Resilience** — “Extreme Heat Preparedness Plan”
+   - https://resilient.az.gov/sites/default/files/2024-07/extreme-heat-preparedness-plan-2024-03-1.pdf
+5. **Peer-reviewed article** — “Compound Climate and Infrastructure Events:
+   How Electrical Grid Failure Alters Heat-Wave Risk”
+   - https://pmc.ncbi.nlm.nih.gov/articles/PMC9882910
+6. **Global Heat Health Information Network (GHIN)** — “Heat Action Plans &
+   Case Studies”
+   - https://heathealth.info/heat-action-plans-and-case-studies
 
-### 3. The reader gets a shortened copy of those findings
+Those are the six sources shown in the search agent's final summary. This is
+not the same thing as a record of every result Tavily returned or every search
+request made.
 
-The reading agent receives:
+### 3. What “how many searches?” means here
 
-1. The original question.
-2. The **first 800 characters** of the saved search findings.
+There are two different counts:
 
-That means the reader does not necessarily see every search finding. If a URL
-is beyond those first 800 characters, it is not included in the search-evidence
-text the reader uses to choose a page.
+- **Search-agent runs:** The pipeline invokes the search agent once for this
+  job.
+- **Tavily searches:** Inside that agent run, the model can call the
+  `web_search` tool. Each such call asks Tavily for **up to two results**.
 
-### 4. The reader chooses a page to inspect
+The log shows six sources in the agent's final summary, but it does not show
+the tool-call trace. Therefore, we cannot say from this log whether the agent
+made exactly three Tavily calls, more than three, or how the six entries map
+to individual tool responses. **If** all six were separate results returned
+by Tavily, at least three calls would be needed at two results per call. That
+is a conditional calculation, not a confirmed call count.
 
-The reading prompt tells the agent:
+### 4. The reader got only part of the search summary
 
-> Use `scrape_url` on the most relevant URL above.
+Before calling the reader, the pipeline passes it:
 
-So the intended behavior is to select a relevant URL, rather than read all
-search results. The model makes that choice from the evidence it receives; the
-program does not contain a separate rule such as “always choose the first
-URL.”
+1. The same research question.
+2. The **first 800 characters** of the search agent's final summary.
 
-There is an important distinction: the pipeline invokes the reader agent once,
-but it does not set a strict one-URL or one-tool-call limit inside that agent.
-The instruction asks for the most relevant URL (singular), but the exact number
-of `scrape_url` calls is not hard-coded by the pipeline. Therefore, the code
-supports saying that the reader is **intended** to read one selected page; it
-does not support promising that it can never request another page.
+It does not pass all six full source descriptions to the reader. In this run,
+the Niskanen Center URL appears near the start of the search summary, so that
+URL was available in the text the reader received.
 
-### 5. The scraper extracts text from a URL
+### 5. The reader focused on the Niskanen Center article
 
-For each URL the reader asks it to scrape, `scrape_url`:
+The reader prompt says to use `scrape_url` on the **most relevant URL** in the
+search evidence. The run's **SCRAPED CONTENT** section is an evidence summary
+for this one article:
 
-- Fetches the page with an 8-second request timeout.
-- Removes script, style, navigation, and footer elements.
-- Extracts readable text from the remaining HTML.
-- Returns at most the first 3,000 characters of that extracted text.
+> “How transmission infrastructure can mitigate blackouts during extreme
+> heat” — Niskanen Center, 3 August 2023
 
-This is a basic page-text extraction, not a full browser. Pages can block the
-request or have content that this extraction does not capture.
+URL:
+https://www.niskanencenter.org/how-transmission-infrastructure-can-mitigate-blackouts-during-extreme-heat
 
-### 6. The writer uses both kinds of evidence
+The summary discusses heat-related grid stress, transmission upgrades, and
+limits in the available evidence. In simple terms, search gave the project a
+broader overview; the reader then examined one relevant source in greater
+depth.
 
-The pipeline combines the saved search findings and the reader's scraped
-content, then gives both to the report writer:
+The code invokes the reader agent once and instructs it to use the most
+relevant URL. It does not impose a hard technical limit on how many times the
+reader may call its scrape tool. For this run, the visible reader summary is
+about one source; the pasted log does not show raw scrape-tool calls.
+
+### 6. A note about the “Jina AI” statement in the reader output
+
+The reader's summary says the page returned **403 Forbidden** to a direct
+request and that the content was retrieved through a **Jina AI** summarizer.
+That is what the reader's printed summary claims.
+
+However, the `scrape_url` implementation currently in the project makes a
+direct HTTP request to the supplied URL. It does not contain code for a Jina
+proxy. The pasted output does not include raw tool-call results that could
+verify that Jina was actually used. So treat the Jina detail as **a claim in
+the model's summary, not a confirmed action by the current scraper code**.
+
+The current scraper is configured to request the URL with an 8-second timeout,
+remove script, style, navigation, and footer elements, and return at most the
+first 3,000 characters of extracted page text. If a request fails, the tool
+returns an error message.
+
+### 7. The report writer received both sets of information
+
+The pipeline combines the two outputs in this shape:
 
 ```text
 SEARCH RESULTS:
-[search agent's findings]
+[the search agent's summary, listing six sources]
 
 DETAILED SCRAPED CONTENT:
-[reader agent's response]
+[the reader agent's Niskanen Center summary]
 ```
 
-In everyday terms, search provides the **wider but brief overview**; deep
-reading provides **more text from a page chosen for closer inspection**. The
-final writer can use both. It is not limited to facts from only the selected
-page.
+So the report was **not based only on the Niskanen article**. The writer was
+given the wider six-source search summary as well as the deeper-reading
+summary. It then produced a report about grid adaptations, findings, evidence
+gaps, and references.
 
-## Process at a glance
+The six entries and their descriptions are what the search agent printed.
+They should not automatically be treated as independently verified facts:
+the log does not include the raw Tavily responses, and the reader's own output
+also notes that some evidence was not captured.
+
+## The process in one picture
 
 ```text
-Your question
-    ↓
-Search agent → Tavily (up to 2 results per search-tool call)
-    ↓
-Search findings (the agent's response)
-    ↓
-Reader sees the first 800 characters of those findings
-    ↓
-Reader is instructed to choose the most relevant URL
-    ↓
-Scraper returns up to 3,000 characters of extracted page text per call
-    ↓
-Writer receives search findings + scraped reading
-    ↓
-Final report
+Question:
+"How are cities adapting their power grids for extreme heat?"
+                         ↓
+One search-agent run
+                         ↓
+Final search summary lists six sources
+(Tavily is configured for up to two results per tool call;
+the exact number of tool calls is not recorded here)
+                         ↓
+Reader receives question + first 800 characters of that summary
+                         ↓
+Reader summary focuses on the Niskanen Center article
+                         ↓
+Writer receives both summaries and creates the report
 ```
 
-## Bottom line
+## What we can and cannot conclude from this run
 
-ResearchFlowAI does **not** have a rule saying “search exactly five websites”
-or “read all search results.” Search requests up to two results per Tavily
-tool call. The reader is directed to inspect the most relevant URL, which
-suggests one page, but the pipeline does not strictly enforce exactly one
-scrape call. The final report writer receives both the search findings and
-the deeper-reading output.
+| Question | What the evidence says |
+|---|---|
+| What was researched? | “How are cities adapting their power grids for extreme heat?” |
+| How many sources appeared in search findings? | Six source entries appeared in the search agent's final summary. |
+| How many Tavily calls were made? | Not recorded in the pasted log. Each call is configured for up to two results. |
+| What did the reader focus on? | Its printed summary is about the Niskanen Center article. |
+| Did the writer only use that one article? | No. The pipeline passed both the search summary and the reader summary to the writer. |
+| Was Jina AI definitely used by the scraper? | The reader summary says so, but current `scrape_url` code does not implement Jina, and the raw tool trace is absent. |
 
-## Where this behavior is defined
+## Where the behavior comes from
 
-- [`tools.py`](./tools.py): Tavily result limit and page-text extraction.
-- [`agents.py`](./agents.py): tools available to the search and reading agents.
-- [`pipeline.py`](./pipeline.py): information passed between the workflow
-  stages, including the 800-character reader context.
+- [`pipeline.py`](./pipeline.py) starts the search and reader agents, passes
+  the first 800 characters of search findings to the reader, and combines both
+  outputs for the writer.
+- [`tools.py`](./tools.py) sets Tavily's maximum to two results per search
+  call and implements direct URL extraction.
+- [`agents.py`](./agents.py) gives the search and reader agents access to
+  their respective tools.
