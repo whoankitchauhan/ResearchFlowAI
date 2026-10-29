@@ -7,6 +7,9 @@ simple terminal workflow and a polished browser interface. Both use the same
 research pipeline: search the web, investigate a source in more depth, write a
 structured report, and critically review the result.
 
+For an interview-focused backend walkthrough, agent-count clarification, and
+20 project questions with answers, see [interview.md](./interview.md).
+
 > ResearchFlowAI helps organize and synthesize information. It does not
 > independently verify every source or replace expert judgment. Check important
 > claims and citations against the original sources.
