@@ -44,6 +44,187 @@ function setServiceState(online) {
   serviceLabel.textContent = online ? "Research service ready" : "Research service unavailable";
 }
 
+function appendInlineMarkdown(parent, text) {
+  const tokenPattern = /(\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|\*\*([^*]+)\*\*|__([^_]+)__|`([^`]+)`|\*([^*\n]+)\*|_([^_\n]+)_)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = tokenPattern.exec(text)) !== null) {
+    parent.append(document.createTextNode(text.slice(lastIndex, match.index)));
+    if (match[2] !== undefined) {
+      const link = document.createElement("a");
+      link.href = match[3];
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = match[2];
+      parent.append(link);
+    } else {
+      const element = document.createElement(match[4] !== undefined || match[5] !== undefined
+        ? "strong"
+        : match[6] !== undefined ? "code" : "em");
+      element.textContent = match[4] ?? match[5] ?? match[6] ?? match[7] ?? match[8];
+      parent.append(element);
+    }
+    lastIndex = tokenPattern.lastIndex;
+  }
+
+  parent.append(document.createTextNode(text.slice(lastIndex)));
+}
+
+function splitTableRow(line) {
+  const value = line.trim().replace(/^\|/, "").replace(/\|$/, "");
+  const cells = [];
+  let cell = "";
+  let escaped = false;
+
+  for (const character of value) {
+    if (character === "|" && !escaped) {
+      cells.push(cell.trim());
+      cell = "";
+    } else {
+      cell += character;
+    }
+    escaped = character === "\\" && !escaped;
+    if (character !== "\\") escaped = false;
+  }
+
+  cells.push(cell.trim());
+  return cells;
+}
+
+function isTableSeparator(line) {
+  const cells = splitTableRow(line);
+  return cells.length > 1 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
+function isBlockStart(lines, index) {
+  const line = lines[index];
+  return /^ {0,3}(?:#{1,6}\s|```|~~~|>|[-*+]\s|\d+[.)]\s)/.test(line)
+    || /^ {0,3}(?:[-*_]\s*){3,}$/.test(line)
+    || (line.includes("|") && index + 1 < lines.length && isTableSeparator(lines[index + 1]));
+}
+
+function renderMarkdown(markdown) {
+  const lines = String(markdown).replace(/\r\n?/g, "\n").split("\n");
+  resultContent.replaceChildren();
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    if (!line.trim()) {
+      index += 1;
+      continue;
+    }
+
+    const fence = line.match(/^ {0,3}(```|~~~)(.*)$/);
+    if (fence) {
+      const codeLines = [];
+      index += 1;
+      while (index < lines.length && !new RegExp(`^ {0,3}${fence[1]}`).test(lines[index])) {
+        codeLines.push(lines[index]);
+        index += 1;
+      }
+      if (index < lines.length) index += 1;
+      const pre = document.createElement("pre");
+      const code = document.createElement("code");
+      code.textContent = codeLines.join("\n");
+      pre.append(code);
+      resultContent.append(pre);
+      continue;
+    }
+
+    const heading = line.match(/^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+    if (heading) {
+      const element = document.createElement(`h${heading[1].length}`);
+      appendInlineMarkdown(element, heading[2]);
+      resultContent.append(element);
+      index += 1;
+      continue;
+    }
+
+    if (line.includes("|") && index + 1 < lines.length && isTableSeparator(lines[index + 1])) {
+      const headers = splitTableRow(line);
+      const wrapper = document.createElement("div");
+      wrapper.className = "result-table-wrap";
+      const table = document.createElement("table");
+      const thead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+      headers.forEach((value) => {
+        const cell = document.createElement("th");
+        appendInlineMarkdown(cell, value);
+        headerRow.append(cell);
+      });
+      thead.append(headerRow);
+      table.append(thead);
+      const tbody = document.createElement("tbody");
+      index += 2;
+      while (index < lines.length && lines[index].includes("|") && lines[index].trim()) {
+        const values = splitTableRow(lines[index]);
+        if (values.length > headers.length) {
+          values.splice(headers.length - 1, values.length - headers.length + 1,
+            values.slice(headers.length - 1).join(" | "));
+        }
+        const row = document.createElement("tr");
+        headers.forEach((_, column) => {
+          const cell = document.createElement("td");
+          appendInlineMarkdown(cell, values[column] || "");
+          row.append(cell);
+        });
+        tbody.append(row);
+        index += 1;
+      }
+      table.append(tbody);
+      wrapper.append(table);
+      resultContent.append(wrapper);
+      continue;
+    }
+
+    const listMatch = line.match(/^ {0,3}([-*+]|\d+[.)])\s+(.+)$/);
+    if (listMatch) {
+      const ordered = /^\d/.test(listMatch[1]);
+      const list = document.createElement(ordered ? "ol" : "ul");
+      while (index < lines.length) {
+        const itemMatch = lines[index].match(/^ {0,3}([-*+]|\d+[.)])\s+(.+)$/);
+        if (!itemMatch || /^\d/.test(itemMatch[1]) !== ordered) break;
+        const item = document.createElement("li");
+        appendInlineMarkdown(item, itemMatch[2]);
+        list.append(item);
+        index += 1;
+      }
+      resultContent.append(list);
+      continue;
+    }
+
+    if (/^ {0,3}>/.test(line)) {
+      const quote = document.createElement("blockquote");
+      while (index < lines.length && /^ {0,3}>/.test(lines[index])) {
+        const paragraph = document.createElement("p");
+        appendInlineMarkdown(paragraph, lines[index].replace(/^ {0,3}> ?/, ""));
+        quote.append(paragraph);
+        index += 1;
+      }
+      resultContent.append(quote);
+      continue;
+    }
+
+    if (/^ {0,3}(?:[-*_]\s*){3,}$/.test(line)) {
+      resultContent.append(document.createElement("hr"));
+      index += 1;
+      continue;
+    }
+
+    const paragraph = document.createElement("p");
+    const paragraphLines = [line.trim()];
+    index += 1;
+    while (index < lines.length && lines[index].trim() && !isBlockStart(lines, index)) {
+      paragraphLines.push(lines[index].trim());
+      index += 1;
+    }
+    appendInlineMarkdown(paragraph, paragraphLines.join(" "));
+    resultContent.append(paragraph);
+  }
+}
+
 async function checkService() {
   try {
     const response = await fetch("/api/health");
@@ -84,7 +265,7 @@ function renderProgress(job) {
 function showOutput(key) {
   if (!currentResult || !(key in currentResult)) return;
   selectedOutput = key;
-  resultContent.textContent = currentResult[key] || "No content was returned for this stage.";
+  renderMarkdown(currentResult[key] || "No content was returned for this stage.");
   documentLabel.textContent = outputLabels[key] || key.toUpperCase();
   actionFeedback.textContent = "";
   document.querySelectorAll(".result-tab").forEach((tab) => {
